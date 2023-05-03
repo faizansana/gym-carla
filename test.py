@@ -23,6 +23,7 @@ def main():
     'continuous_accel_range': [-3.0, 3.0],  # continuous acceleration range
     'continuous_steer_range': [-0.3, 0.3],  # continuous steering angle range
     'ego_vehicle_filter': 'vehicle.lincoln*',  # filter for defining ego vehicle
+    'host': "carla_server", # which host to use
     'port': 2000,  # connection port
     'town': 'Town03',  # which town to simulate
     'task_mode': 'random',  # mode of the task, [random, roundabout (only for Town03)]
