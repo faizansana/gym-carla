@@ -54,6 +54,8 @@ class CarlaEnv(gym.Env):
         # Destination
         if params['task_mode'] == 'roundabout':
             self.dests = [[4.46, -61.46, 0], [-49.53, -2.89, 0], [-6.48, 55.47, 0], [35.96, 3.33, 0]]
+        elif params['task_mode'] == 'intersection':
+            self.dests = [[-113,  -139, 0]]
         else:
             self.dests = None
 
@@ -201,9 +203,13 @@ class CarlaEnv(gym.Env):
 
             if self.task_mode == 'random':
                 transform = random.choice(self.vehicle_spawn_points)
-            if self.task_mode == 'roundabout':
-                self.start = [52.1+np.random.uniform(-5, 5), -4.2, 178.66]  # random
-                # self.start=[52.1,-4.2, 178.66] # static
+            else:    
+                if self.task_mode == 'roundabout':
+                    self.start = [52.1+np.random.uniform(-5, 5), -4.2, 178.66]  # random
+                    # self.start=[52.1,-4.2, 178.66] # static
+                if self.task_mode == 'intersection':
+                    self.start = [-78.3, -110.2, 270]
+                
                 transform = set_carla_transform(self.start)
             if self._try_spawn_ego_vehicle_at(transform):
                 break
