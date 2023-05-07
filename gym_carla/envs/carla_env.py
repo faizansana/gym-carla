@@ -54,8 +54,12 @@ class CarlaEnv(gym.Env):
         # Destination
         if params['task_mode'] == 'roundabout':
             self.dests = [[4.46, -61.46, 0], [-49.53, -2.89, 0], [-6.48, 55.47, 0], [35.96, 3.33, 0]]
+        # elif params['task_mode'] == 'intersection':
+        #     self.dests = [[12, 69.8, 0], [40.5, 20.2, 0]]
         else:
             self.dests = None
+        
+        self.intersection_transforms = None
 
         # action and observation spaces
         self.discrete = params['discrete']
@@ -205,9 +209,23 @@ class CarlaEnv(gym.Env):
                 self.start = [52.1+np.random.uniform(-5, 5), -4.2, 178.66]  # random
                 # self.start=[52.1,-4.2, 178.66] # static
                 transform = set_carla_transform(self.start)
+            if self.task_mode == 'intersection':
+                self.start = [-78.3, -110.2, 270]
+                # ideal_start = [-64, -140, 270]
+
+                # if not self.intersection_transforms:
+                #     self.intersection_transforms = self._get_closest_transform(ideal_start)
+                # if not self.intersection_transforms:
+                #     print("Failed to find a proper spawn point for the ego vehicle, retrying...")
+                #     self.reset()
+                # # Pick randomly one of the possible transforms
+                # transform = random.choice(self.intersection_transforms)
+                transform = set_carla_transform(self.start)
+            
             if self._try_spawn_ego_vehicle_at(transform):
                 break
             else:
+                print("Failed to spawn ego vehicle, retrying...")
                 ego_spawn_times += 1
                 time.sleep(0.1)
 
@@ -257,6 +275,18 @@ class CarlaEnv(gym.Env):
 
         return self._get_obs()
 
+    def _get_closest_transform(self, desired_start):
+        possible_transforms = []
+        for transform in self.vehicle_spawn_points:
+            x_loc = transform.location.x
+            y_loc = transform.location.y
+
+            if np.sqrt((x_loc - desired_start[0])**2 + (y_loc - desired_start[1])**2) < 5:
+                if abs(transform.rotation.yaw - desired_start[2]) < 10:
+                    possible_transforms.append(transform)
+
+        return possible_transforms
+    
     def step(self, action):
         # Calculate acceleration and steering
         if self.discrete:

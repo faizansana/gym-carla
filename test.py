@@ -13,8 +13,8 @@ import carla
 def main():
     # parameters for the gym_carla environment
     params = {
-        'number_of_vehicles': 100,
-        'number_of_walkers': 0,
+        'number_of_vehicles': 5,
+        'number_of_walkers': 10,
         'display_size': 256,  # screen size of bird-eye render
         'max_past_step': 1,  # the number of past steps to draw
         'dt': 0.1,  # time interval between two frames
@@ -27,7 +27,7 @@ def main():
         'host': "carla_server",  # which host to use
         'port': 2000,  # connection port
         'town': 'Town03',  # which town to simulate
-        'task_mode': 'random',  # mode of the task, [random, roundabout (only for Town03)]
+        'task_mode': 'intersection',  # mode of the task, [random, roundabout (only for Town03)]
         'max_time_episode': 1000,  # maximum timesteps per episode
         'max_waypt': 12,  # maximum number of waypoints
         'obs_range': 32,  # observation range (meter)
