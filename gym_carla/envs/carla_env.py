@@ -170,17 +170,10 @@ class CarlaEnv(gym.Env):
             self._spawn_surrounding_vehicles()
 
         # Spawn pedestrians
-        random.shuffle(self.walker_spawn_points)
-        count = self.number_of_walkers
-        if count > 0:
-            for spawn_point in self.walker_spawn_points:
-                if self._try_spawn_random_walker_at(spawn_point):
-                    count -= 1
-                if count <= 0:
-                    break
-        while count > 0:
-            if self._try_spawn_random_walker_at(random.choice(self.walker_spawn_points)):
-                count -= 1
+        if self.task_mode == "intersection":
+            self._spawn_pedestrians_close_proximity()
+        else:
+            self._spawn_pedestrians()
 
         # Get actors polygon list
         self.vehicle_polygons = []
@@ -259,6 +252,24 @@ class CarlaEnv(gym.Env):
         self.birdeye_render.set_hero(self.ego, self.ego.id)
 
         return self._get_obs()
+
+    def _spawn_pedestrians(self):
+        random.shuffle(self.walker_spawn_points)
+        count = self.number_of_walkers
+        if count > 0:
+            for spawn_point in self.walker_spawn_points:
+                if self._try_spawn_random_walker_at(spawn_point):
+                    count -= 1
+                if count <= 0:
+                    break
+        while count > 0:
+            if self._try_spawn_random_walker_at(random.choice(self.walker_spawn_points)):
+                count -= 1
+
+    def _spawn_pedestrians_close_proximity(self):
+        
+        self._try_spawn_random_walker_at(carla.Transform(carla.Location(x=92.7, y=-144, z=10), carla.Rotation(yaw=180)))
+        self._try_spawn_random_walker_at(carla.Transform(carla.Location(x=74.6, y=-144, z=10), carla.Rotation(yaw=90)))
 
     def _spawn_surrounding_vehicles(self):
         random.shuffle(self.vehicle_spawn_points)
