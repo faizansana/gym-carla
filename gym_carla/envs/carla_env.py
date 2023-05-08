@@ -54,8 +54,8 @@ class CarlaEnv(gym.Env):
         # Destination
         if params['task_mode'] == 'roundabout':
             self.dests = [[4.46, -61.46, 0], [-49.53, -2.89, 0], [-6.48, 55.47, 0], [35.96, 3.33, 0]]
-        # elif params['task_mode'] == 'intersection':
-        #     self.dests = [[12, 69.8, 0], [40.5, 20.2, 0]]
+        elif params['task_mode'] == 'intersection':
+            self.dests = [[49,  -137, 0]]
         else:
             self.dests = None
         
@@ -89,9 +89,9 @@ class CarlaEnv(gym.Env):
 
         # Connect to carla server and get world object
         print('connecting to Carla server...')
-        client = carla.Client(params["host"], params['port'])
-        client.set_timeout(10.0)
-        self.world = client.load_world(params['town'])
+        self.client = carla.Client(params["host"], params['port'])
+        self.client.set_timeout(10.0)
+        self.world = self.client.load_world(params['town'])
         print('Carla server connected!')
 
         # Set weather
@@ -164,17 +164,10 @@ class CarlaEnv(gym.Env):
         self._set_synchronous_mode(False)
 
         # Spawn surrounding vehicles
-        random.shuffle(self.vehicle_spawn_points)
-        count = self.number_of_vehicles
-        if count > 0:
-            for spawn_point in self.vehicle_spawn_points:
-                if self._try_spawn_random_vehicle_at(spawn_point, number_of_wheels=[4]):
-                    count -= 1
-                if count <= 0:
-                    break
-        while count > 0:
-            if self._try_spawn_random_vehicle_at(random.choice(self.vehicle_spawn_points), number_of_wheels=[4]):
-                count -= 1
+        if self.task_mode == "intersection":
+            self._spawn_surrounding_close_proximity_vehicles()
+        else:
+            self._spawn_surrounding_vehicles()
 
         # Spawn pedestrians
         random.shuffle(self.walker_spawn_points)
@@ -205,23 +198,15 @@ class CarlaEnv(gym.Env):
 
             if self.task_mode == 'random':
                 transform = random.choice(self.vehicle_spawn_points)
-            if self.task_mode == 'roundabout':
-                self.start = [52.1+np.random.uniform(-5, 5), -4.2, 178.66]  # random
-                # self.start=[52.1,-4.2, 178.66] # static
+            else:    
+                if self.task_mode == 'roundabout':
+                    self.start = [52.1+np.random.uniform(-5, 5), -4.2, 178.66]  # random
+                    # self.start=[52.1,-4.2, 178.66] # static
+                if self.task_mode == 'intersection':
+                    self.start = [84, -85, 270]
+                
                 transform = set_carla_transform(self.start)
-            if self.task_mode == 'intersection':
-                self.start = [-78.3, -110.2, 270]
-                # ideal_start = [-64, -140, 270]
-
-                # if not self.intersection_transforms:
-                #     self.intersection_transforms = self._get_closest_transform(ideal_start)
-                # if not self.intersection_transforms:
-                #     print("Failed to find a proper spawn point for the ego vehicle, retrying...")
-                #     self.reset()
-                # # Pick randomly one of the possible transforms
-                # transform = random.choice(self.intersection_transforms)
-                transform = set_carla_transform(self.start)
-            
+                transform = carla.Transform(carla.Location(x=84, y=-85, z=10), carla.Rotation(yaw=270))
             if self._try_spawn_ego_vehicle_at(transform):
                 break
             else:
@@ -275,18 +260,52 @@ class CarlaEnv(gym.Env):
 
         return self._get_obs()
 
-    def _get_closest_transform(self, desired_start):
-        possible_transforms = []
-        for transform in self.vehicle_spawn_points:
-            x_loc = transform.location.x
-            y_loc = transform.location.y
+    def _spawn_surrounding_vehicles(self):
+        random.shuffle(self.vehicle_spawn_points)
+        count = self.number_of_vehicles
+        if count > 0:
+            for spawn_point in self.vehicle_spawn_points:
+                if self._try_spawn_random_vehicle_at(spawn_point, number_of_wheels=[4]):
+                    count -= 1
+                if count <= 0:
+                    break
+        while count > 0:
+            if self._try_spawn_random_vehicle_at(random.choice(self.vehicle_spawn_points), number_of_wheels=[4]):
+                count -= 1
 
-            if np.sqrt((x_loc - desired_start[0])**2 + (y_loc - desired_start[1])**2) < 5:
-                if abs(transform.rotation.yaw - desired_start[2]) < 10:
-                    possible_transforms.append(transform)
+    def _spawn_surrounding_close_proximity_vehicles(self):
 
-        return possible_transforms
-    
+        adversary_bp = self._create_vehicle_bluepprint("vehicle.tesla.model3")
+        traffic_manager = self.client.get_trafficmanager(8000)
+        tm_port = traffic_manager.get_port()
+        traffic_manager.global_percentage_speed_difference(10)
+
+        # route = ["straight"]
+        y = -134
+        x = 0
+        for _ in range(3):
+            x = x + 15
+            adversary_transform = carla.Transform(carla.Location(x=x, y=y, z=8), carla.Rotation(yaw=0))
+            actor = self.world.try_spawn_actor(adversary_bp, adversary_transform)
+            time.sleep(0.1)
+            actor.apply_control(carla.VehicleControl(throttle=0, steer=0, brake=1))
+            actor.set_autopilot(True, tm_port)
+            traffic_manager.ignore_lights_percentage(actor, 100)
+            traffic_manager.distance_to_leading_vehicle(actor, 10)
+            # traffic_manager.set_route(actor, route)
+        y = -135.5
+        x = 160
+        for _ in range(3):
+            x = x - 15
+            adversary_transform = carla.Transform(carla.Location(x=x, y=y, z=10), carla.Rotation(yaw=180))
+            actor = self.world.try_spawn_actor(adversary_bp, adversary_transform)
+            time.sleep(0.1)
+            actor.apply_control(carla.VehicleControl(throttle=0, steer=0, brake=1))
+            actor.set_autopilot(True, tm_port)
+            traffic_manager.ignore_lights_percentage(actor, 100)
+            traffic_manager.distance_to_leading_vehicle(actor, 10)
+            # traffic_manager.set_route(actor, route)
+
     def step(self, action):
         # Calculate acceleration and steering
         if self.discrete:
