@@ -297,7 +297,7 @@ class CarlaEnv(gym.Env):
         x = 160
         for _ in range(3):
             x = x - 15
-            adversary_transform = carla.Transform(carla.Location(x=x, y=y, z=10), carla.Rotation(yaw=180))
+            adversary_transform = carla.Transform(carla.Location(x=x, y=y, z=10), carla.Rotation(yaw=90))
             actor = self.world.try_spawn_actor(adversary_bp, adversary_transform)
             time.sleep(0.1)
             actor.apply_control(carla.VehicleControl(throttle=0, steer=0, brake=1))
@@ -305,6 +305,20 @@ class CarlaEnv(gym.Env):
             traffic_manager.ignore_lights_percentage(actor, 100)
             traffic_manager.distance_to_leading_vehicle(actor, 10)
             # traffic_manager.set_route(actor, route)
+        
+        x = 82.5
+        y= -148.3
+        for _ in range(3):
+            y = y - 15
+            adversary_transform = carla.Transform(carla.Location(x=x, y=y, z=10), carla.Rotation(yaw=180))
+            actor = self.world.try_spawn_actor(adversary_bp, adversary_transform)
+            time.sleep(0.1)
+            actor.apply_control(carla.VehicleControl(throttle=0, steer=0, brake=1))
+            actor.set_autopilot(True, tm_port)
+            traffic_manager.ignore_lights_percentage(actor, 100)
+            traffic_manager.distance_to_leading_vehicle(actor, 10)
+
+
 
     def step(self, action):
         # Calculate acceleration and steering
