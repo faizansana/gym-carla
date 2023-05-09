@@ -50,9 +50,9 @@ def get_info(vehicle):
   y = trans.location.y
   yaw = trans.rotation.yaw / 180 * np.pi
   bb = vehicle.bounding_box
-  l = bb.extent.x
-  w = bb.extent.y
-  info = (x, y, yaw, l, w)
+  length = bb.extent.x
+  width = bb.extent.y
+  info = (x, y, yaw, length, width)
   return info
 
 
@@ -84,12 +84,12 @@ def get_pixel_info(local_info, d_behind, obs_range, image_size):
   :param image_size: size of edge of image
   :return: tuple of pixel level info, including (x, y, yaw, l, w) all in pixels
   """
-  x, y, yaw, l, w = local_info
+  x, y, yaw, length, width = local_info
   x_pixel = (x + d_behind) / obs_range * image_size
   y_pixel = y / obs_range * image_size + image_size / 2
   yaw_pixel = yaw
-  l_pixel = l / obs_range * image_size
-  w_pixel = w / obs_range * image_size
+  l_pixel = length / obs_range * image_size
+  w_pixel = width / obs_range * image_size
   pixel_tuple = (x_pixel, y_pixel, yaw_pixel, l_pixel, w_pixel)
   return pixel_tuple
 
@@ -100,8 +100,8 @@ def get_poly_from_info(info):
   :param info: tuple of x,y position, yaw angle, and half length and width of vehicle
   :return: a numpy array of size 4x2 of the vehicle rectangle corner points position
   """
-  x, y, yaw, l, w = info
-  poly_local = np.array([[l, w], [l, -w], [-l, -w], [-l, w]]).transpose()
+  x, y, yaw, length, width = info
+  poly_local = np.array([[length, width], [length, -width], [-length, -width], [-length, width]]).transpose()
   R = np.array([[np.cos(yaw), -np.sin(yaw)], [np.sin(yaw), np.cos(yaw)]])
   poly = np.matmul(R, poly_local).transpose() + np.repeat([[x, y]], 4, axis=0)
   return poly
@@ -117,7 +117,7 @@ def get_pixels_inside_vehicle(pixel_info, pixel_grid):
   poly = get_poly_from_info(pixel_info)
   p = Path(poly)  # make a polygon
   grid = p.contains_points(pixel_grid)
-  isinPoly = np.where(grid == True)
+  isinPoly = np.where(grid is True)
   pixels = np.take(pixel_grid, isinPoly, axis=0)[0]
   return pixels
 
